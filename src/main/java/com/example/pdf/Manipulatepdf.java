@@ -14,6 +14,7 @@ import org.apache.logging.log4j.*;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentCatalog;
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
+import org.apache.pdfbox.pdmodel.encryption.PDEncryption;
 import org.apache.pdfbox.pdmodel.encryption.StandardProtectionPolicy;
 import org.apache.pdfbox.pdmodel.interactive.form.PDAcroForm;
 import org.apache.pdfbox.pdmodel.interactive.form.PDField;
@@ -32,17 +33,16 @@ public class Manipulatepdf {
 		try {
 			String fileName = "src\\main\\resources\\0032a_orig.pdf";
 			String newFileName = "src\\main\\resources\\0032a_updated.pdf";
+			//String fileName = "src\\main\\resources\\0032a_updated.pdf";
 			File myFile = new File(fileName);
 			PDDocument pdDoc = PDDocument.load(myFile);
-			if (pdDoc.isEncrypted()) {
-		        try {
-		        	//pdDoc.decrypt("");
-		        	//pdDoc.setAllSecurityToBeRemoved(true);
-		        }
-		        catch (Exception e) {
-		            throw new Exception("The document is encrypted, and we can't decrypt it.", e);
-		        }
-		    }
+			AccessPermission accessPermission =pdDoc.getCurrentAccessPermission();
+	        PDEncryption encryption = pdDoc.getEncryption();
+			/*
+			 * if (pdDoc.isEncrypted()) { try { pdDoc.setAllSecurityToBeRemoved(true); }
+			 * catch (Exception e) { throw new
+			 * Exception("The document is encrypted, and we can't decrypt it.", e); } }
+			 */
 	        PDDocumentCatalog pdCatalog = pdDoc.getDocumentCatalog();
 	        PDAcroForm acroForm = pdCatalog.getAcroForm();
 	
@@ -50,30 +50,30 @@ public class Manipulatepdf {
 	            System.out.println("No form-field --> stop");
 	            return;
 	        }
-	
+	        acroForm.setAppendOnly(true);
+	        
 	        List<PDField> fields = acroForm.getFields();
 	        //printFields(acroForm);
-	        // set the text in the form-field <-- does work
 	        for (PDField field : fields) {
 	        	//System.out.println(field.getFullyQualifiedName());
 				if (field.getFullyQualifiedName().equals("First Name")) {
-				  field.setValue("Manas");
-				  field.setReadOnly(false);
+					field.setValue("Manas");
+				  //field.setReadOnly(false);
 				}
 				if (field.getFullyQualifiedName().equals("Last Name")) {
 					  field.setValue("Sahu");
-					  field.setReadOnly(false);
+					  //field.setReadOnly(false);
 				}
 	        }		
-	        /*
-	         *AccessPermission accessPermission = new AccessPermission();
-			 * accessPermission.setCanModify(true);
-			 * 
-			 * StandardProtectionPolicy standardProtectionPolicy = new
-			 * StandardProtectionPolicy("", "", accessPermission);
-			 * pdDoc.protect(standardProtectionPolicy);
-			 */
-	        pdDoc.save(fileName);
+	        
+	        accessPermission.setCanModify(true);
+	        accessPermission.setCanFillInForm(true);
+	        StandardProtectionPolicy standardProtectionPolicy = new
+	        StandardProtectionPolicy("", "", accessPermission);
+	        acroForm.refreshAppearances();
+	   		pdDoc.protect(standardProtectionPolicy);
+	   		pdDoc.setEncryptionDictionary(encryption);
+	        pdDoc.save(newFileName);
 	        pdDoc.close();
         } catch (Exception e2) {
 			logger.error("Error while creating the updated pdf file.", e2);
